@@ -31,18 +31,25 @@ enum CallAudioRoute {
 void _flutterCallkitIncomingCallbackDispatcher() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  const MethodChannel backgroundChannel =
-      MethodChannel('flutter_callkit_incoming_background');
+  const MethodChannel backgroundChannel = MethodChannel(
+    'flutter_callkit_incoming_background',
+  );
 
   const MethodChannel channel = MethodChannel('flutter_callkit_incoming');
 
   backgroundChannel.setMethodCallHandler((MethodCall call) async {
     final int rawHandle =
         await channel.invokeMethod<int>('getBackgroundHandler') ?? 0;
+    if (rawHandle == 0) {
+      return;
+    }
 
     final callback = PluginUtilities.getCallbackFromHandle(
       CallbackHandle.fromRawHandle(rawHandle),
-    ) as Future<void> Function(CallEvent callEvent);
+    );
+    if (callback is! Future<void> Function(CallEvent callEvent)) {
+      return;
+    }
 
     final event = FlutterCallkitIncoming.decodeCallEvent({
       'event': call.method,
@@ -52,23 +59,28 @@ void _flutterCallkitIncomingCallbackDispatcher() {
       await callback(event);
     }
   });
+  backgroundChannel.invokeMethod<void>('initialized');
 }
 
 class FlutterCallkitIncoming {
-  static const MethodChannel _channel =
-      MethodChannel('flutter_callkit_incoming');
-  static const EventChannel _eventChannel =
-      EventChannel('flutter_callkit_incoming_events');
+  static const MethodChannel _channel = MethodChannel(
+    'flutter_callkit_incoming',
+  );
+  static const EventChannel _eventChannel = EventChannel(
+    'flutter_callkit_incoming_events',
+  );
 
   /// Set a message handler function which is called when the app is in the
   /// background or terminated.
   static Future<void> onBackgroundMessage(
-      BackgroundMessageHandler handler) async {
+    BackgroundMessageHandler handler,
+  ) async {
     final CallbackHandle pluginHandle = PluginUtilities.getCallbackHandle(
       _flutterCallkitIncomingCallbackDispatcher,
     )!;
-    final CallbackHandle userHandle =
-        PluginUtilities.getCallbackHandle(handler)!;
+    final CallbackHandle userHandle = PluginUtilities.getCallbackHandle(
+      handler,
+    )!;
     await _channel.invokeMapMethod('registerBackgroundHandler', {
       'pluginHandle': pluginHandle.toRawHandle(),
       'userHandle': userHandle.toRawHandle(),
@@ -346,12 +358,10 @@ class FlutterCallkitIncoming {
         final isOnHold = body?['isOnHold'] as bool?;
         if (isOnHold == null) {
           throw const FormatException(
-              '[ACTION_CALL_TOGGLE_HOLD] isOnHold is null.');
+            '[ACTION_CALL_TOGGLE_HOLD] isOnHold is null.',
+          );
         }
-        return CallEventActionCallToggleHold(
-          id,
-          isOnHold,
-        );
+        return CallEventActionCallToggleHold(id, isOnHold);
       case CallEventConstants.actionCallToggleMute:
         final body = data['body'] as Map<Object?, Object?>?;
         final id = body?['id'] as String?;
@@ -361,7 +371,8 @@ class FlutterCallkitIncoming {
         final isMuted = body?['isMuted'] as bool?;
         if (isMuted == null) {
           throw const FormatException(
-              '[ACTION_CALL_TOGGLE_MUTE] isMuted is null.');
+            '[ACTION_CALL_TOGGLE_MUTE] isMuted is null.',
+          );
         }
         return CallEventActionCallToggleMute(id, isMuted);
       case CallEventConstants.actionCallToggleDmtf:
