@@ -43,14 +43,18 @@ sealed class CallEvent {
 }
 
 class CallEventActionDidUpdateDevicePushTokenVoip extends CallEvent {
-  const CallEventActionDidUpdateDevicePushTokenVoip();
+  /// Creates a VoIP-token update event.
+  const CallEventActionDidUpdateDevicePushTokenVoip(this.deviceTokenVoIP);
+
+  /// The complete PushKit token supplied by iOS.
+  final String? deviceTokenVoIP;
 
   @override
-  String get eventName =>
-      CallEventConstants.actionDidUpdateDevicePushTokenVoip;
+  String get eventName => CallEventConstants.actionDidUpdateDevicePushTokenVoip;
 
   @override
-  String toString() => 'CallEventActionDidUpdateDevicePushTokenVoip()';
+  String toString() =>
+      'CallEventActionDidUpdateDevicePushTokenVoip($deviceTokenVoIP)';
 }
 
 class CallEventActionCallIncoming extends CallEvent {
@@ -119,27 +123,39 @@ class CallEventActionCallEnded extends CallEvent {
 }
 
 class CallEventActionCallTimeout extends CallEvent {
-  const CallEventActionCallTimeout(this.id);
+  /// Creates a timeout event with its complete call metadata.
+  const CallEventActionCallTimeout(this.callKitParams);
 
   @override
   String get eventName => CallEventConstants.actionCallTimeout;
 
-  final String id;
+  /// Complete call metadata retained by the native platform.
+  final CallKitParams callKitParams;
+
+  /// Backwards-compatible shortcut for the call identifier.
+  String get id => callKitParams.id;
 
   @override
-  String toString() => 'CallEventActionCallTimeout(id: $id)';
+  String toString() =>
+      'CallEventActionCallTimeout(callKitParams: $callKitParams)';
 }
 
 class CallEventActionCallConnected extends CallEvent {
-  const CallEventActionCallConnected(this.id);
+  /// Creates a connected event with its complete call metadata.
+  const CallEventActionCallConnected(this.callKitParams);
 
   @override
   String get eventName => CallEventConstants.actionCallConnected;
 
-  final String id;
+  /// Complete call metadata retained by the native platform.
+  final CallKitParams callKitParams;
+
+  /// Backwards-compatible shortcut for the call identifier.
+  String get id => callKitParams.id;
 
   @override
-  String toString() => 'CallEventActionCallConnected(id: $id)';
+  String toString() =>
+      'CallEventActionCallConnected(callKitParams: $callKitParams)';
 }
 
 class CallEventActionCallCallback extends CallEvent {

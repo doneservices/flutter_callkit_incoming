@@ -185,9 +185,9 @@ class CallkitIncomingBroadcastReceiver : BroadcastReceiver() {
                         context.startActivity(intent)
                     } else {
                         getCallkitNotificationManager()?.showIncomingNotification(data)
-                        sendEventFlutter(CallkitConstants.ACTION_CALL_INCOMING, data)
                         addCall(context, incomingData)
                     }
+                    sendEventFlutter(CallkitConstants.ACTION_CALL_INCOMING, data)
                 } catch (error: Exception) {
                     Log.e(TAG, null, error)
                 }

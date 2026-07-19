@@ -35,7 +35,7 @@ void _flutterCallkitIncomingCallbackDispatcher() {
       CallbackHandle.fromRawHandle(rawHandle),
     ) as Future<void> Function(CallEvent callEvent);
 
-    final event = FlutterCallkitIncoming._receiveCallEvent({
+    final event = FlutterCallkitIncoming.decodeCallEvent({
       'event': call.method,
       'body': call.arguments,
     });
@@ -84,7 +84,7 @@ class FlutterCallkitIncoming {
   /// Event.DID_UPDATE_DEVICE_PUSH_TOKEN_VOIP - only iOS
   /// }
   static Stream<CallEvent?> get onEvent =>
-      _eventChannel.receiveBroadcastStream().map(_receiveCallEvent);
+      _eventChannel.receiveBroadcastStream().map(decodeCallEvent);
 
   /// Handle accept call from background when the app was killed.
   static void acceptCallHandle(ActionEvent handler) {
@@ -231,7 +231,8 @@ class FlutterCallkitIncoming {
     return await _channel.invokeMethod("canUseFullScreenIntent");
   }
 
-  static CallEvent? _receiveCallEvent(dynamic data) {
+  /// Decode the platform event envelope into the public typed model.
+  static CallEvent? decodeCallEvent(Object? data) {
     if (data is! Map) {
       return null;
     }
@@ -239,7 +240,10 @@ class FlutterCallkitIncoming {
     final eventName = data['event'];
     switch (eventName) {
       case CallEventConstants.actionDidUpdateDevicePushTokenVoip:
-        return const CallEventActionDidUpdateDevicePushTokenVoip();
+        final body = data['body'] as Map<Object?, Object?>?;
+        return CallEventActionDidUpdateDevicePushTokenVoip(
+          body?['deviceTokenVoIP'] as String?,
+        );
       case CallEventConstants.actionCallIncoming:
         final callkitParams = toCallkitParams(data);
         if (callkitParams == null) {
@@ -275,13 +279,13 @@ class FlutterCallkitIncoming {
         if (callkitParams == null) {
           throw const FormatException('[ACTION_CALL_TIMEOUT] id is null.');
         }
-        return CallEventActionCallTimeout(callkitParams.id);
+        return CallEventActionCallTimeout(callkitParams);
       case CallEventConstants.actionCallConnected:
         final callkitParams = toCallkitParams(data);
         if (callkitParams == null) {
           throw const FormatException('[ACTION_CALL_CONNECTED] id is null.');
         }
-        return CallEventActionCallConnected(callkitParams.id);
+        return CallEventActionCallConnected(callkitParams);
       case CallEventConstants.actionCallCallback:
         final callkitParams = toCallkitParams(data);
         if (callkitParams == null) {
@@ -342,10 +346,11 @@ class FlutterCallkitIncoming {
         return CallEventActionCallToggleGroup(id, callUUIDToGroupWith);
       case CallEventConstants.actionCallToggleAudioSession:
         final body = data['body'] as Map<Object?, Object?>?;
-        final isActive = body?['isActive'] as bool?;
+        final isActive = (body?['isActive'] ?? body?['isActivate']) as bool?;
         if (isActive == null) {
           throw const FormatException(
-              '[ACTION_CALL_TOGGLE_AUDIO_SESSION] id is null.');
+            '[ACTION_CALL_TOGGLE_AUDIO_SESSION] isActive is null.',
+          );
         }
         return CallEventActionCallToggleAudioSession(isActive);
       case CallEventConstants.actionCallCustom:
