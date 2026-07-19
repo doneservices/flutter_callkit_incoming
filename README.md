@@ -1,5 +1,8 @@
 # Flutter Callkit Incoming
 
+> This repository is a narrowly maintained fork. See [FORK.md](FORK.md)
+> for its public contracts, upstream links, and sync procedure.
+
 A Flutter plugin to show incoming call in your Flutter app (Custom for Android/Callkit for iOS).
 
 [![pub package](https://img.shields.io/pub/v/flutter_callkit_incoming.svg)](https://pub.dev/packages/flutter_callkit_incoming)
@@ -749,4 +752,4 @@ Please check [PUSHKIT.md](https://github.com/hiennguyen92/flutter_callkit_incomi
     </td>
     <td></td>
   </tr>
-</table> 
+</table>
