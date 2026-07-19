@@ -49,11 +49,15 @@ class FlutterCallkitIncomingPlugin : FlutterPlugin, MethodCallHandler, ActivityA
         private val eventCallbacks = mutableListOf<WeakReference<CallkitEventCallback>>()
 
         fun sendEvent(event: String, body: Map<String, Any?>) {
-            send(event, body)
+            send(getInstance()?.context, event, body)
+        }
+
+        fun sendEvent(context: Context, event: String, body: Map<String, Any?>) {
+            send(context.applicationContext, event, body)
         }
 
         fun sendEventCustom(event: String, body: Map<String, Any>) {
-            send(event, body)
+            send(getInstance()?.context, event, body)
         }
 
         fun acceptCallHandleCallback(bundle: Bundle) {
@@ -77,13 +81,17 @@ class FlutterCallkitIncomingPlugin : FlutterPlugin, MethodCallHandler, ActivityA
          * Send event to Flutter UI if there are active handlers, otherwise send to background
          * executor if registered.
          */
-        private fun send(event: String, body: Map<String, Any?>) {
+        private fun send(context: Context?, event: String, body: Map<String, Any?>) {
             val uiHandlers = eventHandlers.values.filter { it.hasListener() }
             if (uiHandlers.isNotEmpty()) {
                 Log.d(TAG, "Sending UI event: $event")
                 uiHandlers.forEach { it.send(event, body) }
-            } else if (CallkitBackgroundExecutor.registered) {
+            } else {
                 Log.d(TAG, "Sending background event: $event (no UI handlers)")
+                val callbackHandle = getPluginCallbackHandle(context) ?: 0L
+                if (context != null && callbackHandle != 0L) {
+                    CallkitBackgroundExecutor.start(context, callbackHandle)
+                }
                 CallkitBackgroundExecutor.send(event, body)
             }
         }
@@ -232,7 +240,7 @@ class FlutterCallkitIncomingPlugin : FlutterPlugin, MethodCallHandler, ActivityA
     }
 
     fun sendEventCustom(body: Map<String, Any>) {
-        send(CallkitConstants.ACTION_CALL_CUSTOM, body)
+        send(context, CallkitConstants.ACTION_CALL_CUSTOM, body)
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {

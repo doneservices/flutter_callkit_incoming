@@ -180,14 +180,14 @@ class CallkitIncomingBroadcastReceiver : BroadcastReceiver() {
                 try {
                     registerTelecomIncomingCall(context, data)
                     val incomingData = Data.fromBundle(data)
+                    addCall(context, incomingData)
                     if (incomingData.isFullScreen) {
                         val intent = CallkitIncomingActivity.getIntent(context, data)
                         context.startActivity(intent)
                     } else {
                         getCallkitNotificationManager()?.showIncomingNotification(data)
-                        addCall(context, incomingData)
                     }
-                    sendEventFlutter(CallkitConstants.ACTION_CALL_INCOMING, data)
+                    sendEventFlutter(context, CallkitConstants.ACTION_CALL_INCOMING, data)
                 } catch (error: Exception) {
                     Log.e(TAG, null, error)
                 }
@@ -201,7 +201,7 @@ class CallkitIncomingBroadcastReceiver : BroadcastReceiver() {
                         CallkitConstants.ACTION_CALL_START,
                         data
                     )
-                    sendEventFlutter(CallkitConstants.ACTION_CALL_START, data)
+                    sendEventFlutter(context, CallkitConstants.ACTION_CALL_START, data)
                     addCall(context, Data.fromBundle(data), true)
                 } catch (error: Exception) {
                     Log.e(TAG, null, error)
@@ -218,7 +218,7 @@ class CallkitIncomingBroadcastReceiver : BroadcastReceiver() {
                         CallkitConstants.ACTION_CALL_ACCEPT,
                         data
                     )
-                    sendEventFlutter(CallkitConstants.ACTION_CALL_ACCEPT, data)
+                    sendEventFlutter(context, CallkitConstants.ACTION_CALL_ACCEPT, data)
                     addCall(context, Data.fromBundle(data), true)
                     FlutterCallkitIncomingPlugin.acceptCallHandleCallback(data)
                 } catch (error: Exception) {
@@ -232,7 +232,7 @@ class CallkitIncomingBroadcastReceiver : BroadcastReceiver() {
                     FlutterCallkitIncomingPlugin.notifyEventCallbacks(CallkitEventCallback.CallEvent.DECLINE, data)
                     // clear notification
                     getCallkitNotificationManager()?.clearIncomingNotification(data, false)
-                    sendEventFlutter(CallkitConstants.ACTION_CALL_DECLINE, data)
+                    sendEventFlutter(context, CallkitConstants.ACTION_CALL_DECLINE, data)
                     removeCall(context, Data.fromBundle(data))
                 } catch (error: Exception) {
                     Log.e(TAG, null, error)
@@ -246,7 +246,7 @@ class CallkitIncomingBroadcastReceiver : BroadcastReceiver() {
                     // clear notification and stop service
                     getCallkitNotificationManager()?.clearIncomingNotification(data, false)
                     CallkitNotificationService.stopService(context)
-                    sendEventFlutter(CallkitConstants.ACTION_CALL_ENDED, data)
+                    sendEventFlutter(context, CallkitConstants.ACTION_CALL_ENDED, data)
                     removeCall(context, Data.fromBundle(data))
                 } catch (error: Exception) {
                     Log.e(TAG, null, error)
@@ -260,7 +260,7 @@ class CallkitIncomingBroadcastReceiver : BroadcastReceiver() {
                     val notificationManager = getCallkitNotificationManager()
                     notificationManager?.clearIncomingNotification(data, false)
                     notificationManager?.showMissCallNotification(data)
-                    sendEventFlutter(CallkitConstants.ACTION_CALL_TIMEOUT, data)
+                    sendEventFlutter(context, CallkitConstants.ACTION_CALL_TIMEOUT, data)
                     removeCall(context, Data.fromBundle(data))
                 } catch (error: Exception) {
                     Log.e(TAG, null, error)
@@ -271,7 +271,7 @@ class CallkitIncomingBroadcastReceiver : BroadcastReceiver() {
                 try {
                     // update notification on going connected
                     getCallkitNotificationManager()?.showOngoingCallNotification(data, true)
-                    sendEventFlutter(CallkitConstants.ACTION_CALL_CONNECTED, data)
+                    sendEventFlutter(context, CallkitConstants.ACTION_CALL_CONNECTED, data)
                 } catch (error: Exception) {
                     Log.e(TAG, null, error)
                 }
@@ -280,7 +280,7 @@ class CallkitIncomingBroadcastReceiver : BroadcastReceiver() {
             "${context.packageName}.${CallkitConstants.ACTION_CALL_CALLBACK}" -> {
                 try {
                     getCallkitNotificationManager()?.clearMissCallNotification(data)
-                    sendEventFlutter(CallkitConstants.ACTION_CALL_CALLBACK, data)
+                    sendEventFlutter(context, CallkitConstants.ACTION_CALL_CALLBACK, data)
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
                         val closeNotificationPanel = Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS)
                         context.sendBroadcast(closeNotificationPanel)
@@ -292,9 +292,7 @@ class CallkitIncomingBroadcastReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun sendEventFlutter(event: String, data: Bundle) {
-        if (silenceEvents) return
-
+    private fun sendEventFlutter(context: Context, event: String, data: Bundle) {
         val android = mapOf(
             "isCustomNotification" to data.getBoolean(
                 CallkitConstants.EXTRA_CALLKIT_IS_CUSTOM_NOTIFICATION,
@@ -354,6 +352,6 @@ class CallkitIncomingBroadcastReceiver : BroadcastReceiver() {
             "callingNotification" to callingNotification,
             "android" to android
         )
-        FlutterCallkitIncomingPlugin.sendEvent(event, forwardData)
+        if (!silenceEvents) FlutterCallkitIncomingPlugin.sendEvent(context, event, forwardData)
     }
 }
