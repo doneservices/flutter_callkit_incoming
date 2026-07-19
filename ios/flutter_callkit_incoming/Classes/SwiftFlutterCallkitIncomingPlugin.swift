@@ -191,6 +191,83 @@ public class SwiftFlutterCallkitIncomingPlugin: NSObject, FlutterPlugin, CXProvi
             }
             result(true)
             break
+        case "acceptIncomingCall":
+            guard
+                let args = call.arguments as? [String: Any],
+                let id = args["id"] as? String,
+                let uuid = UUID(uuidString: id),
+                let currentCall = callManager.callWithUUID(uuid: uuid)
+            else {
+                result(false)
+                return
+            }
+            callManager.acceptCall(call: currentCall)
+            result(true)
+            break
+        case "markCallConnected":
+            guard
+                let args = call.arguments as? [String: Any],
+                let id = args["id"] as? String,
+                let uuid = UUID(uuidString: id),
+                let currentCall = callManager.callWithUUID(uuid: uuid)
+            else {
+                result(false)
+                return
+            }
+            callManager.markConnected(call: currentCall)
+            result(true)
+            break
+        case "dismissIncomingCall":
+            guard
+                let args = call.arguments as? [String: Any],
+                let id = args["id"] as? String,
+                let uuid = UUID(uuidString: id),
+                let currentCall = callManager.callWithUUID(uuid: uuid)
+            else {
+                result(false)
+                return
+            }
+            guard !currentCall.data.isAccepted && !currentCall.hasConnected else {
+                result(false)
+                return
+            }
+            sharedProvider?.reportCall(
+                with: uuid,
+                endedAt: Date(),
+                reason: .answeredElsewhere
+            )
+            callManager.removeCall(currentCall)
+            result(true)
+            break
+        case "setAudioRoute":
+            guard
+                let args = call.arguments as? [String: Any],
+                let route = args["route"] as? String
+            else {
+                result(nil)
+                return
+            }
+            let session = AVAudioSession.sharedInstance()
+            let preserveExternal = args["preserveExternalRoute"] as? Bool ?? false
+            let hasExternalRoute = session.currentRoute.outputs.contains {
+                [.bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .headphones, .headsetMic]
+                    .contains($0.portType)
+            }
+            if preserveExternal && hasExternalRoute {
+                result(true)
+                return
+            }
+            do {
+                try session.overrideOutputAudioPort(route == "speaker" ? .speaker : .none)
+                result(true)
+            } catch {
+                result(FlutterError(
+                    code: "audio_route_failed",
+                    message: error.localizedDescription,
+                    details: nil
+                ))
+            }
+            break
         case "activeCalls":
             result(self.callManager.activeCalls())
             break;
@@ -230,9 +307,6 @@ public class SwiftFlutterCallkitIncomingPlugin: NSObject, FlutterPlugin, CXProvi
             result(true)
             break
         case "endNativeSubsystemOnly":
-            result(true)
-            break
-        case "setAudioRoute":
             result(true)
             break
         default:
@@ -431,7 +505,7 @@ public class SwiftFlutterCallkitIncomingPlugin: NSObject, FlutterPlugin, CXProvi
             return
         }
         let call = Call(uuid: uuid, data: data)
-        self.callManager.connectedCall(call: call)
+        self.callManager.markConnected(call: call)
     }
     
     @objc public func activeCalls() -> [[String: Any]] {

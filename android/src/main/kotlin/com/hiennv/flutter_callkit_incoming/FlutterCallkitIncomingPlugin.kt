@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.telecom.CallAudioState
 import android.util.Log
 import androidx.annotation.NonNull
 import com.hiennv.flutter_callkit_incoming.Utils.Companion.reapCollection
@@ -362,19 +363,74 @@ class FlutterCallkitIncomingPlugin : FlutterPlugin, MethodCallHandler, ActivityA
                     result.success(true)
                 }
 
-                "callConnected" -> {
-                    val calls = getDataActiveCalls(context)
-                    val data = Data(call.arguments() ?: HashMap())
-                    val currentCall = calls.firstOrNull { it.id == data.id }
-                    if (currentCall != null && context != null) {
+                "acceptIncomingCall" -> {
+                    val requested = Data(call.arguments() ?: HashMap())
+                    val current = getDataActiveCalls(context).firstOrNull { it.id == requested.id }
+                        ?: requested
+                    if (current.id.isEmpty() || context == null) {
+                        result.success(false)
+                    } else {
                         context?.sendBroadcast(
-                            CallkitIncomingBroadcastReceiver.getIntentConnected(
+                            CallkitIncomingBroadcastReceiver.getIntentAccept(
                                 requireNotNull(context),
-                                currentCall.toBundle()
+                                current.toBundle()
                             )
                         )
+                        result.success(true)
                     }
-                    result.success(true)
+                }
+
+                "dismissIncomingCall" -> {
+                    val requested = Data(call.arguments() ?: HashMap())
+                    val connection = CallkitConnection.find(requested.id)
+                    val current = connection?.bundle?.let { Data.fromBundle(it) }
+                        ?: getDataActiveCalls(context).firstOrNull { it.id == requested.id }
+                        ?: requested
+                    if (current.id.isEmpty() || current.isAccepted || context == null) {
+                        result.success(false)
+                    } else {
+                        callkitNotificationManager?.clearIncomingNotification(
+                            connection?.bundle ?: current.toBundle(),
+                            false
+                        )
+                        CallkitNotificationService.stopService(requireNotNull(context))
+                        connection?.markEnded()
+                        removeCall(context, current)
+                        result.success(true)
+                    }
+                }
+
+                "callConnected" -> {
+                    markCallConnected(call, result)
+                }
+
+                "markCallConnected" -> {
+                    markCallConnected(call, result)
+                }
+
+                "setAudioRoute" -> {
+                    val args = call.arguments as? Map<*, *>
+                    val id = args?.get("id") as? String
+                    val route = args?.get("route") as? String
+                    val preserveExternal = args?.get("preserveExternalRoute") as? Boolean ?: false
+                    val connection = id?.let { CallkitConnection.find(it) }
+                    if (connection == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                        result.success(null)
+                    } else {
+                        val state = connection.callAudioState
+                        val externalRoutes =
+                            CallAudioState.ROUTE_BLUETOOTH or CallAudioState.ROUTE_WIRED_HEADSET
+                        if (preserveExternal && state != null && state.route and externalRoutes != 0) {
+                            result.success(true)
+                        } else {
+                            val expectedSpeaker = route == "speaker"
+                            connection.setAudioRoute(
+                                if (expectedSpeaker) CallAudioState.ROUTE_SPEAKER
+                                else CallAudioState.ROUTE_EARPIECE
+                            )
+                            confirmAudioRoute(connection, expectedSpeaker, result, 0)
+                        }
+                    }
                 }
 
                 "endAllCalls" -> {
@@ -446,9 +502,6 @@ class FlutterCallkitIncomingPlugin : FlutterPlugin, MethodCallHandler, ActivityA
                     result.success(true)
                 }
 
-                "setAudioRoute" -> {
-                    result.success(true)
-                }
             }
         } catch (error: Exception) {
             result.error("error", error.message, "")
@@ -471,6 +524,44 @@ class FlutterCallkitIncomingPlugin : FlutterPlugin, MethodCallHandler, ActivityA
             instance.callkitNotificationManager = null
         }
         Log.d(TAG, "onDetachedFromEngine")
+    }
+
+    private fun markCallConnected(call: MethodCall, result: Result) {
+        val calls = getDataActiveCalls(context)
+        val data = Data(call.arguments() ?: HashMap())
+        val currentCall = calls.firstOrNull { it.id == data.id }
+        if (currentCall != null && context != null) {
+            context?.sendBroadcast(
+                CallkitIncomingBroadcastReceiver.getIntentConnected(
+                    requireNotNull(context),
+                    currentCall.toBundle()
+                )
+            )
+        }
+        result.success(currentCall != null)
+    }
+
+    private fun confirmAudioRoute(
+        connection: CallkitConnection,
+        expectedSpeaker: Boolean,
+        result: Result,
+        attempt: Int,
+    ) {
+        val state = connection.callAudioState
+        if (state != null) {
+            val actualSpeaker = state.route and CallAudioState.ROUTE_SPEAKER != 0
+            if (actualSpeaker == expectedSpeaker || attempt >= 5) {
+                result.success(actualSpeaker)
+                return
+            }
+        } else if (attempt >= 5) {
+            result.success(null)
+            return
+        }
+        Handler(Looper.getMainLooper()).postDelayed(
+            { confirmAudioRoute(connection, expectedSpeaker, result, attempt + 1) },
+            100L,
+        )
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {

@@ -18,6 +18,15 @@ typedef BackgroundMessageHandler = Future<void> Function(CallEvent callEvent);
 typedef ActionEvent = void Function(Map<dynamic, dynamic> data);
 typedef Callback = void Function(dynamic data);
 
+/// Supported native call-audio destinations.
+enum CallAudioRoute {
+  /// Route audio to the receiver/earpiece.
+  earpiece,
+
+  /// Route audio to the loudspeaker.
+  speaker,
+}
+
 @pragma('vm:entry-point')
 void _flutterCallkitIncomingCallbackDispatcher() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -174,7 +183,43 @@ class FlutterCallkitIncoming {
   /// On iOS, using Callkit(update a history into the Phone app).
   /// On Android, Nothing(only callback event listener).
   static Future<void> setCallConnected(String id) async {
-    await _channel.invokeMethod("callConnected", {'id': id});
+    await markCallConnected(id);
+  }
+
+  /// Accept an incoming call from application UI.
+  static Future<bool> acceptIncomingCall(CallKitParams params) async {
+    return await _channel.invokeMethod<bool>(
+          'acceptIncomingCall',
+          params.toJson(),
+        ) ??
+        false;
+  }
+
+  /// Mark an accepted call as connected without accepting it again.
+  static Future<void> markCallConnected(String id) async {
+    await _channel.invokeMethod('markCallConnected', {'id': id});
+  }
+
+  /// Dismiss stale incoming UI without emitting decline or end events.
+  static Future<bool> dismissIncomingCall(CallKitParams params) async {
+    return await _channel.invokeMethod<bool>(
+          'dismissIncomingCall',
+          params.toJson(),
+        ) ??
+        false;
+  }
+
+  /// Route call audio through the earpiece or speaker.
+  static Future<bool?> setAudioRoute(
+    String id,
+    CallAudioRoute route, {
+    bool preserveExternalRoute = false,
+  }) {
+    return _channel.invokeMethod<bool>('setAudioRoute', {
+      'id': id,
+      'route': route.name,
+      'preserveExternalRoute': preserveExternalRoute,
+    });
   }
 
   /// End all calls.

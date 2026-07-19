@@ -72,10 +72,7 @@ class CallManager: NSObject {
         self.requestCall(callTransaction, action: "endCall")
     }
     
-    func connectedCall(call: Call) {
-        let callItem = self.callWithUUID(uuid: call.uuid)
-        callItem?.connectedCall(completion: nil)
-        
+    func acceptCall(call: Call) {
         let answerAction = CXAnswerCallAction(call: call.uuid)        
         let transaction = CXTransaction(action: answerAction)
 
@@ -86,6 +83,10 @@ class CallManager: NSObject {
                 // Call successfully answered
             }
         }
+    }
+
+    func markConnected(call: Call) {
+        call.connectedCall(completion: nil)
     }
     
     func endCallAlls() {
