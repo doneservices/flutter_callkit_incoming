@@ -71,6 +71,7 @@ class CallkitNotificationService : Service() {
         if (intent?.action === CallkitConstants.ACTION_CALL_ACCEPT) {
             intent.getBundleExtra(CallkitConstants.EXTRA_CALLKIT_INCOMING_DATA)
                 ?.let {
+                    getCallkitNotificationManager()?.createNotificationChanel(it)
                     getCallkitNotificationManager()?.clearIncomingNotification(it, true)
                     if (it.getBoolean(CallkitConstants.EXTRA_CALLKIT_CALLING_SHOW, true)) {
                         showOngoingCallNotification(it)
