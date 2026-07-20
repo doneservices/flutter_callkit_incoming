@@ -11,7 +11,7 @@ interface CallkitEventCallback {
     
     /**
      * Called when a call is accepted or declined.
-     * @param event The type of call event (ACCEPT, DECLINE, END)
+     * @param event The type of call event (ACCEPT, DECLINE, END, TIMEOUT)
      * @param callData Bundle containing call information (id, nameCaller, etc.)
      */
     fun onCallEvent(event: CallEvent, callData: Bundle)
@@ -22,6 +22,7 @@ interface CallkitEventCallback {
     enum class CallEvent {
         ACCEPT,
         DECLINE,
-        END
+        END,
+        TIMEOUT
     }
 }

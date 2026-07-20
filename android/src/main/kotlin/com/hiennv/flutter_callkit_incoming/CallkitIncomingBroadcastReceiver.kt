@@ -256,6 +256,7 @@ class CallkitIncomingBroadcastReceiver : BroadcastReceiver() {
             "${context.packageName}.${CallkitConstants.ACTION_CALL_TIMEOUT}" -> {
                 try {
                     driveTelecomConnection(context, data, CallkitConstants.ACTION_CALL_TIMEOUT)
+                    FlutterCallkitIncomingPlugin.notifyEventCallbacks(CallkitEventCallback.CallEvent.TIMEOUT, data)
                     // clear notification and show miss notification
                     val notificationManager = getCallkitNotificationManager()
                     notificationManager?.clearIncomingNotification(data, false)
