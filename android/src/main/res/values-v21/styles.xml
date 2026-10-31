@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Transparent bars instead of the translucent scrim used on API 19-20.
+         The call UI is laid out behind them by
+         CallkitIncomingActivity.transparentStatusAndNavigation(). -->
+    <style name="CallkitIncomingTheme" parent="@style/Theme.AppCompat">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+</resources>
