@@ -38,6 +38,7 @@ The fork history is intentionally split into independently reviewable patches:
 - `fix(android): create notification channel before foreground start`
 - `feat: expose call lifecycle and audio controls`
 - `fix(android): wait for background callback readiness`
+- `fix(android): drop deprecated edge-to-edge window APIs`
 
 Each patch should be proposed, replaced by matching upstream work, or dropped
 independently. Application-specific persistence and acknowledgement semantics
